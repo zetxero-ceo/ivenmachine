@@ -41,7 +41,7 @@
                         <i class="fa-solid fa-file-import"></i> Import
                     </span>
                     <div class="btn-group">
-                        <label for="import-txt" class="btn btn-import" title="Import ไฟล์ vending.txt (แทนที่ข้อมูลเครื่อง/เหรียญ/ช่องขาย)">
+                        <label for="import-txt" class="btn btn-import" title="Import ไฟล์ vending.txt (แทนที่ข้อมูลเครื่อง/เหรียญ/ช่องขาย) หรือ pma_product.txt (แทนที่หมวดหมู่ PMA)">
                             <i class="fa-solid fa-file-lines"></i>
                             <span>.txt</span>
                         </label>
@@ -135,20 +135,26 @@
                             <span class="info-value" id="machine-activation-code">-</span>
                         </div>
                         <div class="info-row">
-                            <span class="info-label">จังหวัด:</span>
-                            <span class="info-value" id="machine-province">-</span>
+                            <label class="info-label" for="machine-province">จังหวัด:</label>
+                            <input type="text" class="form-control info-input" id="machine-province" placeholder="-" autocomplete="off">
                         </div>
                         <div class="info-row">
-                            <span class="info-label">อำเภอ:</span>
-                            <span class="info-value" id="machine-district">-</span>
+                            <label class="info-label" for="machine-district">อำเภอ:</label>
+                            <input type="text" class="form-control info-input" id="machine-district" placeholder="-" autocomplete="off">
                         </div>
                         <div class="info-row">
-                            <span class="info-label">GM:</span>
-                            <span class="info-value" id="machine-gm">-</span>
+                            <label class="info-label" for="machine-gm">GM:</label>
+                            <input type="text" class="form-control info-input" id="machine-gm" placeholder="-" autocomplete="off">
                         </div>
                         <div class="info-row">
-                            <span class="info-label">ย่านแบ:</span>
-                            <span class="info-value" id="machine-area">-</span>
+                            <label class="info-label" for="machine-area">ย่านแบ:</label>
+                            <input type="text" class="form-control info-input" id="machine-area" placeholder="-" autocomplete="off">
+                        </div>
+                        <div class="info-actions">
+                            <button type="button" class="btn btn-export" id="save-machine-info">
+                                <i class="fa-solid fa-floppy-disk"></i>
+                                <span>บันทึกข้อมูลเครื่อง</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -191,6 +197,27 @@
                             <span class="status-label">สถานะประตูสินค้า:</span>
                             <span class="badge badge-info" id="status-product-door">-</span>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="overview-card cms-card">
+                <div class="overview-card-header">
+                    <i class="fa-solid fa-paste"></i>
+                    <label for="cms-text">วางข้อความจาก CMS</label>
+                </div>
+                <div class="overview-card-body">
+                    <p class="cms-hint">คัดลอกหน้าสถานะเครื่องจากระบบ CMS แล้ววางที่นี่ (หรือวางข้อความ PMA ที่ขึ้นต้นด้วย <code>PMA, No., Name</code>) — ได้ผลเหมือนนำเข้าไฟล์ .txt</p>
+                    <textarea id="cms-text" class="form-control cms-textarea" rows="6" spellcheck="false" placeholder="Machine Activation Code: ...&#10;สถานะออนไลน์&#10;ออนไลน์&#10;..."></textarea>
+                    <div class="info-actions">
+                        <button type="button" class="btn btn-secondary" id="cms-clear">
+                            <i class="fa-solid fa-eraser"></i>
+                            <span>ล้าง</span>
+                        </button>
+                        <button type="button" class="btn btn-import" id="cms-apply">
+                            <i class="fa-solid fa-file-import"></i>
+                            <span>นำเข้าข้อความ</span>
+                        </button>
                     </div>
                 </div>
             </div>
