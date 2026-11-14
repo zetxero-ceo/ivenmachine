@@ -1204,6 +1204,41 @@ textarea {
 /* ============================================= */
 
 /* Tablet (768px ลงมา) */
+/* ============================================= */
+/* Machine info inputs + CMS paste (ย้ายมาจาก vending-status) */
+/* ============================================= */
+.info-input {
+    flex: 1.4;
+    width: auto;
+    min-width: 0;
+    padding: 0.3rem 0.6rem;
+}
+
+.info-actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.cms-card {
+    margin-top: 1.25rem;
+}
+
+.cms-hint {
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.cms-textarea {
+    resize: vertical;
+    min-height: 8rem;
+    font-family: 'Sarabun', monospace;
+    line-height: 1.5;
+}
+
 @media screen and (max-width: 768px) {
     .header-inner {
         flex-direction: column;

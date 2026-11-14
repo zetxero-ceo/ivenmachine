@@ -29,6 +29,7 @@ const NOTIFICATION_TYPES = {
 
 const FIELD_LABELS = [
     'สถานะเครื่อง',
+    'สถานะออนไลน์',
     'สถานะสต๊อก',
     'สถานะสแกนเนอร์',
     'สถานะอุณหภูมิ',
@@ -46,6 +47,14 @@ const FIELD_LABELS = [
 const DROP_TEST_VALUES = ['Passed', 'Not tested', 'Failed'];
 
 const STORAGE_KEY = 'vending_machine_state_v1';
+
+// ช่องข้อมูลเครื่องที่ผู้ใช้กรอกเองได้ (ไม่ได้มาจากข้อความ CMS)
+const MACHINE_INFO_FIELDS = [
+    { id: 'machine-province', key: 'province' },
+    { id: 'machine-district', key: 'district' },
+    { id: 'machine-gm', key: 'gm' },
+    { id: 'machine-area', key: 'area' }
+];
 
 /* ============================================= */
 /* Application State (สถานะของแอปพลิเคชัน) */
@@ -343,18 +352,69 @@ function escapeHtml(text) {
     });
 }
 
-function getStatusBadgeClass(status) {
-    if (!status) {
+/* ประเมินสถานะเครื่องแต่ละช่อง (ยืดหยุ่นกว่าการเทียบคำตรงตัว) — ย้ายมาจาก vending-status */
+function evalOnlineStatus(text) {
+    const lower = text.toLowerCase();
+    if (text.indexOf('ออฟไลน์') !== -1 || lower.indexOf('offline') !== -1) {
+        return 'bad';
+    }
+    if (text.indexOf('ออนไลน์') !== -1 || lower.indexOf('online') !== -1) {
+        return 'ok';
+    }
+    return 'warn';
+}
+
+function evalNormalStatus(text) {
+    return text.indexOf('ปกติ') !== -1 && text.indexOf('ผิดปกติ') === -1 ? 'ok' : 'bad';
+}
+
+function evalDoorStatus(text) {
+    return text === 'ปิด' ? 'ok' : 'warn';
+}
+
+function evalProductDoorStatus(text) {
+    if (text.indexOf('ไม่') === 0) {
+        return 'warn';
+    }
+    return text.indexOf('ล็อค') !== -1 || text.indexOf('ล็อก') !== -1 ? 'ok' : 'warn';
+}
+
+function evalStockRatioStatus(text) {
+    const match = text.match(/(-?\d+)\s*\/\s*(\d+)/);
+    if (!match) {
+        return '';
+    }
+    const have = Number(match[1]);
+    const total = Number(match[2]);
+    if (have >= total) {
+        return 'ok';
+    }
+    return have <= 0 ? 'bad' : 'warn';
+}
+
+const MACHINE_STATUS_EVALUATORS = {
+    online: evalOnlineStatus,
+    stock: evalStockRatioStatus,
+    scanner: evalOnlineStatus,
+    banknote: evalNormalStatus,
+    lift: evalNormalStatus,
+    door: evalDoorStatus,
+    productDoor: evalProductDoorStatus
+};
+
+const STATUS_LEVEL_BADGE = {
+    ok: 'badge-success',
+    warn: 'badge-warning',
+    bad: 'badge-danger'
+};
+
+function getMachineStatusBadgeClass(key, value) {
+    const text = String(value === null || value === undefined ? '' : value).trim();
+    const evaluate = MACHINE_STATUS_EVALUATORS[key];
+    if (!text || !evaluate) {
         return 'badge-info';
     }
-    const lower = String(status).toLowerCase().trim();
-    if (lower === 'ออนไลน์' || lower === 'ปกติ' || lower === 'ปิด' || lower === 'ล็อค' || lower === 'publish') {
-        return 'badge-success';
-    }
-    if (lower === 'ออฟไลน์' || lower === 'ผิดปกติ' || lower === 'เปิด' || lower === 'disable') {
-        return 'badge-danger';
-    }
-    return 'badge-info';
+    return STATUS_LEVEL_BADGE[evaluate(text)] || 'badge-info';
 }
 
 function getSlotStockClass(stock) {
@@ -531,40 +591,31 @@ function renderMachineOverview() {
         return;
     }
     const codeEl = $('machine-activation-code');
-    const provinceEl = $('machine-province');
-    const districtEl = $('machine-district');
-    const gmEl = $('machine-gm');
-    const areaEl = $('machine-area');
     if (codeEl) {
         codeEl.textContent = data.activationCode || '-';
     }
-    if (provinceEl) {
-        provinceEl.textContent = data.province || '-';
-    }
-    if (districtEl) {
-        districtEl.textContent = data.district || '-';
-    }
-    if (gmEl) {
-        gmEl.textContent = data.gm || '-';
-    }
-    if (areaEl) {
-        areaEl.textContent = data.area || '-';
-    }
+    MACHINE_INFO_FIELDS.forEach(function (field) {
+        const el = $(field.id);
+        if (el) {
+            el.value = data[field.key] || '';
+        }
+    });
+    const status = data.status || {};
     const statusMap = [
-        { id: 'status-online', value: data.status.online },
-        { id: 'status-stock', value: data.status.stock },
-        { id: 'status-scanner', value: data.status.scanner },
-        { id: 'status-temperature', value: data.status.temperature },
-        { id: 'status-banknote', value: data.status.banknote },
-        { id: 'status-lift', value: data.status.lift },
-        { id: 'status-door', value: data.status.door },
-        { id: 'status-product-door', value: data.status.productDoor }
+        { id: 'status-online', key: 'online' },
+        { id: 'status-stock', key: 'stock' },
+        { id: 'status-scanner', key: 'scanner' },
+        { id: 'status-temperature', key: 'temperature' },
+        { id: 'status-banknote', key: 'banknote' },
+        { id: 'status-lift', key: 'lift' },
+        { id: 'status-door', key: 'door' },
+        { id: 'status-product-door', key: 'productDoor' }
     ];
     statusMap.forEach(function (item) {
         const el = $(item.id);
         if (el) {
-            el.textContent = item.value || '-';
-            el.className = 'badge ' + getStatusBadgeClass(item.value);
+            el.textContent = status[item.key] || '-';
+            el.className = 'badge ' + getMachineStatusBadgeClass(item.key, status[item.key]);
         }
     });
 }
@@ -1061,7 +1112,8 @@ function parseVendingTxt(text) {
         return '';
     }
 
-    machine.status.online = findStatusValue('สถานะเครื่อง');
+    // ข้อความจาก CMS ใช้ได้ทั้ง "สถานะออนไลน์" และ "สถานะเครื่อง"
+    machine.status.online = findStatusValue('สถานะออนไลน์') || findStatusValue('สถานะเครื่อง');
     machine.status.stock = findStatusValue('สถานะสต๊อก');
     machine.status.scanner = findStatusValue('สถานะสแกนเนอร์');
     machine.status.temperature = findStatusValue('สถานะอุณหภูมิ');
@@ -1217,41 +1269,144 @@ function parseVendingTxt(text) {
 /* ============================================= */
 /* Import: TXT (นำเข้าไฟล์ vending.txt) */
 /* ============================================= */
+/* ============================================= */
+/* Parser: PMA TXT (pma_product.txt: PMA, No., Name) — ย้ายมาจาก vending-status */
+/* ============================================= */
+function isPmaText(text) {
+    if (/Machine\s*Activation\s*Code/i.test(text)) {
+        return false;
+    }
+    const lines = text.split(/\r?\n/).filter(function (line) {
+        return line.trim().length > 0;
+    });
+    if (!lines.length) {
+        return false;
+    }
+    const first = lines[0].toLowerCase();
+    return first.indexOf('pma') !== -1 && first.indexOf('name') !== -1;
+}
+
+function parsePmaText(text) {
+    const lines = text.split(/\r?\n/).filter(function (line) {
+        return line.trim().length > 0;
+    });
+    const clean = function (value) {
+        return String(value).trim().replace(/^"+|"+$/g, '').trim();
+    };
+    const entries = [];
+    lines.forEach(function (line, index) {
+        const lower = line.toLowerCase();
+        if (index === 0 && lower.indexOf('pma') !== -1 && lower.indexOf('name') !== -1) {
+            return;
+        }
+        let match = line.match(/^\s*([^,\t]+?)\s*[,\t]\s*([^,\t]+?)\s*[,\t]\s*(.+?)\s*$/);
+        if (!match) {
+            match = line.match(/^\s*(\S+)\s+(\S+)\s+(.+?)\s*$/);
+        }
+        if (!match) {
+            return;
+        }
+        const entry = { pma: clean(match[1]), no: clean(match[2]), name: clean(match[3]) };
+        if (entry.name) {
+            entries.push(entry);
+        }
+    });
+    return entries;
+}
+
+/* ============================================= */
+/* Import: ข้อความจาก CMS หรือ PMA (ใช้ร่วมกันทั้งไฟล์ .txt และช่องวางข้อความ) */
+/* ============================================= */
+function applyImportedText(text, sourceLabel) {
+    if (isPmaText(text)) {
+        const entries = parsePmaText(text);
+        if (!entries.length) {
+            showNotification('ไม่พบรายการ PMA ใน' + sourceLabel, NOTIFICATION_TYPES.WARNING);
+            return false;
+        }
+        AppState.pmaData = entries;
+        renderAll();
+        saveState();
+        showNotification('นำเข้า PMA จาก' + sourceLabel + 'สำเร็จ (' + entries.length + ' หมวดหมู่)', NOTIFICATION_TYPES.SUCCESS);
+        return true;
+    }
+
+    const parsed = parseVendingTxt(text);
+    if (!parsed.machine || !parsed.machine.activationCode) {
+        showNotification('ไม่พบข้อมูลเครื่องใน' + sourceLabel.trim() + ' (Machine Activation Code หายไป)', NOTIFICATION_TYPES.WARNING);
+        return false;
+    }
+    if (!parsed.slots || parsed.slots.length === 0) {
+        showNotification('ไม่พบข้อมูลสินค้าในช่องขายใน' + sourceLabel, NOTIFICATION_TYPES.WARNING);
+        return false;
+    }
+
+    const oldMachine = AppState.machineData || {};
+    AppState.machineData = {
+        activationCode: parsed.machine.activationCode,
+        province: oldMachine.province || '',
+        district: oldMachine.district || '',
+        gm: oldMachine.gm || '',
+        area: oldMachine.area || '',
+        status: parsed.machine.status,
+        coins: parsed.machine.coins
+    };
+
+    AppState.slotsData = parsed.slots;
+    renderAll();
+    saveState();
+    showNotification('นำเข้า' + sourceLabel + 'สำเร็จ (อัปเดตข้อมูลเครื่อง เหรียญ และช่องขาย)', NOTIFICATION_TYPES.SUCCESS);
+    return true;
+}
+
 function importTxt(file) {
     const reader = new FileReader();
     reader.onload = function (e) {
         try {
-            const text = e.target.result;
-            const parsed = parseVendingTxt(text);
-            if (!parsed.machine || !parsed.machine.activationCode) {
-                showNotification('ไม่พบข้อมูลเครื่องในไฟล์ .txt (Machine Activation Code หายไป)', NOTIFICATION_TYPES.WARNING);
-                return;
-            }
-            if (!parsed.slots || parsed.slots.length === 0) {
-                showNotification('ไม่พบข้อมูลสินค้าในช่องขายในไฟล์ .txt', NOTIFICATION_TYPES.WARNING);
-                return;
-            }
-
-            const oldMachine = AppState.machineData || {};
-            AppState.machineData = {
-                activationCode: parsed.machine.activationCode,
-                province: oldMachine.province || '',
-                district: oldMachine.district || '',
-                gm: oldMachine.gm || '',
-                area: oldMachine.area || '',
-                status: parsed.machine.status,
-                coins: parsed.machine.coins
-            };
-
-            AppState.slotsData = parsed.slots;
-            renderAll();
-            saveState();
-            showNotification('นำเข้าไฟล์ .txt สำเร็จ (อัปเดตข้อมูลเครื่อง เหรียญ และช่องขาย)', NOTIFICATION_TYPES.SUCCESS);
+            applyImportedText(String(e.target.result || ''), 'ไฟล์ .txt ');
         } catch (error) {
             showNotification('เกิดข้อผิดพลาดในการอ่านไฟล์ .txt: ' + error.message, NOTIFICATION_TYPES.ERROR);
         }
     };
     reader.readAsText(file, 'UTF-8');
+}
+
+function importPastedText() {
+    const input = $('cms-text');
+    const text = input ? input.value.trim() : '';
+    if (!text) {
+        showNotification('กรุณาวางข้อความจาก CMS ก่อน', NOTIFICATION_TYPES.WARNING);
+        return;
+    }
+    const message = isPmaText(text)
+        ? 'นำเข้าข้อความ PMA จะแทนที่หมวดหมู่ PMA ปัจจุบัน ต้องการดำเนินการต่อหรือไม่?'
+        : 'นำเข้าข้อความจาก CMS จะแทนที่ข้อมูลเครื่อง เหรียญ และช่องขายปัจจุบัน ต้องการดำเนินการต่อหรือไม่?';
+    showConfirm(message, function () {
+        try {
+            if (applyImportedText(text, 'ข้อความ ')) {
+                input.value = '';
+            }
+        } catch (error) {
+            showNotification('เกิดข้อผิดพลาดในการอ่านข้อความ: ' + error.message, NOTIFICATION_TYPES.ERROR);
+        }
+    });
+}
+
+function saveMachineInfo() {
+    if (!AppState.machineData) {
+        AppState.machineData = JSON.parse(JSON.stringify(DEFAULT_MACHINE_DATA));
+    }
+    MACHINE_INFO_FIELDS.forEach(function (field) {
+        const el = $(field.id);
+        if (el) {
+            AppState.machineData[field.key] = el.value.trim();
+        }
+    });
+    if (saveState()) {
+        showNotification('บันทึกข้อมูลเครื่องแล้ว', NOTIFICATION_TYPES.SUCCESS);
+    } else {
+        showNotification('บันทึกข้อมูลเครื่องไม่สำเร็จ (พื้นที่เก็บข้อมูลในเบราว์เซอร์อาจเต็ม)', NOTIFICATION_TYPES.ERROR);
+    }
 }
 
 /* ============================================= */
@@ -1789,7 +1944,26 @@ function bindEvents() {
         });
     }
 
-    bindImport(importTxtEl, 'นำเข้าไฟล์ .txt จะแทนที่ข้อมูลเครื่อง เหรียญ และช่องขายปัจจุบัน ต้องการดำเนินการต่อหรือไม่?', importTxt);
+    bindImport(importTxtEl, 'นำเข้าไฟล์ .txt จะแทนที่ข้อมูลเครื่อง เหรียญ และช่องขายปัจจุบัน (หรือหมวดหมู่ PMA ถ้าเป็นไฟล์ PMA) ต้องการดำเนินการต่อหรือไม่?', importTxt);
+
+    const cmsApplyEl = $('cms-apply');
+    const cmsClearEl = $('cms-clear');
+    const saveMachineInfoEl = $('save-machine-info');
+    if (cmsApplyEl) {
+        cmsApplyEl.addEventListener('click', importPastedText);
+    }
+    if (cmsClearEl) {
+        cmsClearEl.addEventListener('click', function () {
+            const input = $('cms-text');
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+        });
+    }
+    if (saveMachineInfoEl) {
+        saveMachineInfoEl.addEventListener('click', saveMachineInfo);
+    }
     bindImport(importXlsxEl, 'นำเข้าไฟล์ .xlsx จะอัปเดตข้อมูลตามชีตที่มีในไฟล์ (แทนที่ข้อมูลเดิมในส่วนนั้น) ต้องการดำเนินการต่อหรือไม่?', importXlsx);
     bindImport(importCsvEl, 'นำเข้าไฟล์ .csv จะแทนที่ข้อมูลช่องขายหรือสินค้าตามรูปแบบไฟล์ ต้องการดำเนินการต่อหรือไม่?', importCsv);
     bindImport(importJsonEl, 'นำเข้าไฟล์ .json จะแทนที่ข้อมูลทั้งหมด ต้องการดำเนินการต่อหรือไม่?', importJson);
