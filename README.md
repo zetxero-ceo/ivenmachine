@@ -3,7 +3,7 @@
 ระบบจัดการตู้จำหน่ายสินค้าอัตโนมัติ (Vending Machine Management System) — เว็บแอปสำหรับนำเข้าข้อมูลตู้
 ตรวจสอบสถานะเครื่อง สรุปเหรียญ/สินค้าที่ต้องเติม และส่งออกรายการเติมสินค้าเป็นไฟล์ Excel/CSV/JSON
 
-> 🌐 **ใช้งานออนไลน์:** https://zetxero-main.github.io/ivenmachine/
+> 🌐 **ใช้งานออนไลน์:** https://zetxero-ceo.github.io/ivenmachine/
 
 ---
 
